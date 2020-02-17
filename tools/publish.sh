@@ -13,16 +13,20 @@ gpgImport () {
 }
 
 pubDeb () {
-    # prepare an ordered list of ubuntu release codenames
-    DISTS=$(curl https://api.launchpad.net/devel/ubuntu/series | jq -cM '.entries|sort_by(.version|tonumber)|map(.name)')
+    if [ $REPO == ubuntu ]; then
+        # prepare an ordered list of ubuntu release codenames
+        DISTS=$(curl https://api.launchpad.net/devel/ubuntu/series | jq -cM '.entries|sort_by(.version|tonumber)|map(.name)')
+    fi
     for PKG in $(ls *${REPO}*); do
         # read distro code from filename
         CODENAME=$(echo $PKG | grep -oP '[^-]+.deb$' | cut -d. -f1)
         jfrog bt upload --publish --override --deb "${CODENAME}/main/amd64" "$PKG" "$VERSION_PATH"
-        # we only build for 1st yearly releases. this section pushes the builds for next release version
-        NEXT_CODENAME=$(echo $DISTS | jq -rcM ".[index(\"${CODENAME}\")+1]")
-        if [ $NEXT_CODENAME != null ]; then
-            jfrog bt upload --publish --deb "${NEXT_CODENAME}/main/amd64" "$PKG" "$VERSION_PATH"
+        if [ $REPO == ubuntu ]; then
+            # we only build for 1st yearly releases. this section pushes the builds for next release version
+            NEXT_CODENAME=$(echo $DISTS | jq -rcM ".[index(\"${CODENAME}\")+1]")
+            if [ $NEXT_CODENAME != null ]; then
+                jfrog bt upload --publish --deb "${NEXT_CODENAME}/main/amd64" "$PKG" "$VERSION_PATH"
+            fi
         fi
     done
 }
