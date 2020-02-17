@@ -1,5 +1,5 @@
 #!/bin/bash
-ORG='openbangla'
+ORG='openbangla-testing'
 PACKAGE='openbangla-keyboard'
 REPOLIST=(ubuntu debian fedora archlinux)
 RELEASE_VERSION=$(cat version.txt | head -n1)
