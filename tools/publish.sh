@@ -1,5 +1,5 @@
 #!/bin/bash
-ORG='openbangla-testing'
+ORG='openbangla'
 PACKAGE='openbangla-keyboard'
 REPOLIST=(ubuntu debian fedora archlinux)
 RELEASE_VERSION=$(cat version.txt | head -n1)
@@ -13,20 +13,17 @@ gpgImport () {
 }
 
 pubDeb () {
-    if [ $REPO == ubuntu ]; then
-        # prepare an ordered list of ubuntu release codenames
-        DISTS=$(curl https://api.launchpad.net/devel/ubuntu/series | jq -cM '.entries|sort_by(.version|tonumber)|map(.name)')
-    fi
+    # prepare an ordered list of ubuntu release codenames
+    DISTS=$(curl https://api.launchpad.net/devel/ubuntu/series | jq -cM '.entries|sort_by(.version|tonumber)|map(.name)')
     for PKG in $(ls *${REPO}*); do
         # read distro code from filename
         CODENAME=$(echo $PKG | grep -oP '[^-]+.deb$' | cut -d. -f1)
         jfrog bt upload --publish --override --deb "${CODENAME}/main/amd64" "$PKG" "$VERSION_PATH"
-        if [ $REPO == ubuntu ]; then
-            # we only build for 1st yearly releases. this section pushes the builds for next release version
-            NEXT_CODENAME=$(echo $DISTS | jq -rcM ".[index(\"${CODENAME}\")+1]")
-            if [ $NEXT_CODENAME != null ]; then
-                jfrog bt upload --publish --deb "${NEXT_CODENAME}/main/amd64" "$PKG" "$VERSION_PATH"
-            fi
+        # we only build for 1st yearly releases. this section pushes the builds for next release version
+        NEXT_CODENAME=$(echo $DISTS | jq -rcM ".[index(\"${CODENAME}\")+1]")
+        if [ $NEXT_CODENAME != null ]; then
+            rename "${CODENAME}.deb" "${NEXT_CODENAME}.deb" "$PKG"
+            jfrog bt upload --publish --override --deb "${NEXT_CODENAME}/main/amd64" *${NEXT_CODENAME}.deb "$VERSION_PATH"
         fi
     done
 }
