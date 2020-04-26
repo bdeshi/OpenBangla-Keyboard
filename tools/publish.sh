@@ -24,16 +24,16 @@ pubDeb () {
         CODENAME=$(echo "$PKG" | grep -oP '[^-]+.deb$' | cut -d. -f1)
         jfrog bt upload --publish --override --deb "${CODENAME}/main/amd64" "$PKG" "$VERSION_PATH"
         if [ $REPO == ubuntu ]; then
-            # we only build for major/first yearly releases. this section pushes the builds for other release version
+            # we only build for major/first yearly releases.
+            # this block uploads the pacjage for the other version in the same range
             VERSION_STR=$(grep "$CODENAME" dists.txt)
             VERSION_MAJOR=$(echo "$VERSION_STR" | cut -d. -f1)
-            # get the codename of the other version in the same version range
             OTHER_VERSION_STR=$(grep "^${VERSION_MAJOR}\." dists.txt | grep -v "$CODENAME")
             if [ -n "$OTHER_VERSION_STR" ]; then
                 OTHER_CODENAME=$(echo "$OTHER_VERSION_STR" | cut -d: -f2)
                 OTHER_VERSION_STR=${OTHER_VERSION_STR/:/-}
                 VERSION_STR=${VERSION_STR/:/-}
-                cp "$PKG" "${PKG/$VERSION_STR/$OTHER_VERSION_STR}"
+                ln -frs "$PKG" "${PKG/$VERSION_STR/$OTHER_VERSION_STR}"
                 jfrog bt upload --publish --override --deb "${OTHER_CODENAME}/main/amd64" ./*${OTHER_CODENAME}.deb "$VERSION_PATH"
             fi
         fi
