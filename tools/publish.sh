@@ -15,7 +15,7 @@ gpgImport () {
 pubDeb () {
     # prepare an ordered list of ubuntu release {version:codename} dict
     curl https://api.launchpad.net/devel/ubuntu/series \
-    | jq -cM '.entries|sort_by(.version|tonumber)|map({(.version): .name})' \
+    | jq -M '.entries|sort_by(.version|tonumber)|map({(.version): .name})' \
     | sed -r 's/[][ ,"\{\}]//g' \
     | grep -v '^\s*$' \
     > dists.txt
@@ -34,7 +34,6 @@ pubDeb () {
             echo $OTHER_CODENAME
             if [ -n "$OTHER_CODENAME" ]; then
                 rename "${CODENAME}.deb" "${OTHER_CODENAME}.deb" "$PKG"
-                ln -rfs "$PKG" $(sed "s")
                 jfrog bt upload --publish --override --deb "${OTHER_CODENAME}/main/amd64" ./*${OTHER_CODENAME}.deb "$VERSION_PATH"
             fi
         fi
