@@ -15,10 +15,11 @@ gpgImport () {
 pubDeb () {
     # prepare an ordered list of ubuntu release {version:codename} dict
     curl https://api.launchpad.net/devel/ubuntu/series \
-    | jq -M '.entries|sort_by(.version|tonumber)|map({(.version): .name})' \
+    | jq -cM '.entries|sort_by(.version|tonumber)|map({(.version): .name})' \
     | sed -r 's/[][ ,"\{\}]//g' \
-    | grep -v '^\s*' \
-    | tee dists.txt
+    | grep -v '^\s*$' \
+    > dists.txt
+    echo "dists.txt"
     cat dists.txt
     for PKG in $(ls ./*${REPO}* 2>/dev/null); do
         # read distro code from filename
