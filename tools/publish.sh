@@ -32,7 +32,7 @@ pubDeb () {
             if [ -n "$OTHER_CODENAME" ]; then
                 OTHER_VERSION_STR=${OTHER_CODENAME/:/-}
                 VERSION_STR=${BUILD_VERSION/:/-}
-                cp "$PKG" ${$PKG/$VERSION_STR/$OTHER_VERSION_STR}
+                cp "$PKG" "${PKG/$VERSION_STR/$OTHER_VERSION_STR}"
                 jfrog bt upload --publish --override --deb "${OTHER_CODENAME}/main/amd64" ./*${OTHER_CODENAME}.deb "$VERSION_PATH"
             fi
         fi
