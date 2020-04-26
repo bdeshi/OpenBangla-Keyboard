@@ -19,7 +19,8 @@ pubDeb () {
     | sed -r 's/[][ ,"\{\}]//g' \
     | grep -v '^\s*' \
     | tee dists.txt
-    for PKG in $(ls ./*${REPO}*); do
+    cat dists.txt
+    for PKG in $(ls ./*${REPO}* 2>/dev/null); do
         # read distro code from filename
         CODENAME=$(echo "$PKG" | grep -oP '[^-]+.deb$' | cut -d. -f1)
         jfrog bt upload --publish --override --deb "${CODENAME}/main/amd64" "$PKG" "$VERSION_PATH"
@@ -32,6 +33,7 @@ pubDeb () {
             echo $OTHER_CODENAME
             if [ -n "$OTHER_CODENAME" ]; then
                 rename "${CODENAME}.deb" "${OTHER_CODENAME}.deb" "$PKG"
+                ln -rfs "$PKG" $(sed "s")
                 jfrog bt upload --publish --override --deb "${OTHER_CODENAME}/main/amd64" ./*${OTHER_CODENAME}.deb "$VERSION_PATH"
             fi
         fi
@@ -46,7 +48,7 @@ pubRpm () {
     rm pubkey.asc
     echo "%_signature gpg" > "${HOME}/.rpmmacros"
     echo "%_gpg_name ${BINTRAY_GPG_ID}" >> "${HOME}/.rpmmacros"
-    for PKG in $(ls ./*${REPO}*); do
+    for PKG in $(ls ./*${REPO}* 2>/dev/null); do
         rpm --addsign "$PKG"
         VERSION_ID=$(echo "$PKG" | grep -oP '[\d]+.rpm$' | cut -d. -f1)
         jfrog bt upload --publish --override "$PKG" "$VERSION_PATH" "${VERSION_ID}/${ARCH}/"
@@ -57,19 +59,20 @@ pubArch () {
     gpgImport
     ARCH='x86_64'
     # only one file should be listed anyway
-    PKG=$(ls -1 ./*${REPO}* | head -n1)
-    # get repo metadata from the "meta" version, creating it if necessary
-    [[ $(jfrog bt version-show "${PACKAGE_PATH}/meta" 2> /dev/null) ]] \
-    || jfrog bt version-create --vcs-tag "0.0.0" --desc "archlinux repo metadata" "${PACKAGE_PATH}/meta"
-    jfrog bt download-ver "${PACKAGE_PATH}/meta"
-    if [ -d "$ARCH" ]; then
-        mv "$ARCH" meta
-    fi
-    mkdir -p meta
-    gpg --detach-sign --no-armor -u "$BINTRAY_GPG_ID" "$PKG"
-    repo-add -p -s -k "$BINTRAY_GPG_ID" "meta/${ORG}.db.tar.gz" "$PKG"
-    jfrog bt upload --publish --override "meta/*" "${PACKAGE_PATH}/meta" "${ARCH}/"
-    jfrog bt upload --publish --override "${PKG}*" "${VERSION_PATH}" "${ARCH}/"
+    for PKG in $(ls -1 ./*${REPO}* 2>/dev/null); do
+        # get repo metadata from the "meta" version, creating it if necessary
+        [[ $(jfrog bt version-show "${PACKAGE_PATH}/meta" 2> /dev/null) ]] \
+        || jfrog bt version-create --vcs-tag "0.0.0" --desc "archlinux repo metadata" "${PACKAGE_PATH}/meta"
+        jfrog bt download-ver "${PACKAGE_PATH}/meta"
+        if [ -d "$ARCH" ]; then
+            mv "$ARCH" meta
+        fi
+        mkdir -p meta
+        gpg --detach-sign --no-armor -u "$BINTRAY_GPG_ID" "$PKG"
+        repo-add -p -s -k "$BINTRAY_GPG_ID" "meta/${ORG}.db.tar.gz" "$PKG"
+        jfrog bt upload --publish --override "meta/*" "${PACKAGE_PATH}/meta" "${ARCH}/"
+        jfrog bt upload --publish --override "${PKG}*" "${VERSION_PATH}" "${ARCH}/"
+    done
 }
 
 for REPO in ${DISTLIST[*]}; do
