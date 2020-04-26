@@ -17,6 +17,7 @@ jobs:
       image: ${{ matrix.container }}
       env:
         DIST: ${{ matrix.container }}
+        DEBIAN_FRONTEND: noninteractive
     steps:
       - name: checkout-source
         uses: actions/checkout@v1

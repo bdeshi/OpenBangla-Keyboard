@@ -15,9 +15,6 @@ gpgImport () {
 pubDeb () {
     # prepare an ordered list of ubuntu release codenames
     DISTS=$(curl https://api.launchpad.net/devel/ubuntu/series | jq -cM '.entries|sort_by(.version|tonumber)|map(.name)')
-    # fix tzdata install for ubuntu20.x
-    export DEBIAN_FRONTEND=noninteractive
-    ln -fs /usr/share/zoneinfo/Etc/UTC /etc/localtime
     for PKG in $(ls *${REPO}*); do
         # read distro code from filename
         CODENAME=$(echo $PKG | grep -oP '[^-]+.deb$' | cut -d. -f1)
