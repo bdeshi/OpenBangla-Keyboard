@@ -25,13 +25,14 @@ pubDeb () {
         jfrog bt upload --publish --override --deb "${CODENAME}/main/amd64" "$PKG" "$VERSION_PATH"
         if [ $REPO == ubuntu ]; then
             # we only build for major/first yearly releases. this section pushes the builds for other release version
-            BUILD_VERSION=$(grep "$CODENAME" dists.txt)
-            VERSION_MAJOR=$(echo "$BUILD_VERSION" | cut -d. -f1)
+            VERSION_STR=$(grep "$CODENAME" dists.txt)
+            VERSION_MAJOR=$(echo "$VERSION_STR" | cut -d. -f1)
             # get the codename of the other version in the same version range
-            OTHER_CODENAME=$(grep "^${VERSION_MAJOR}\." dists.txt | grep -v "$CODENAME")
-            if [ -n "$OTHER_CODENAME" ]; then
-                OTHER_VERSION_STR=${OTHER_CODENAME/:/-}
-                VERSION_STR=${BUILD_VERSION/:/-}
+            OTHER_VERSION_STR=$(grep "^${VERSION_MAJOR}\." dists.txt | grep -v "$CODENAME")
+            if [ -n "$OTHER_VERSION_STR" ]; then
+                OTHER_CODENAME=$(echo "$OTHER_VERSION_STR" | cut -d: -f2)
+                OTHER_VERSION_STR=${OTHER_VERSION_STR/:/-}
+                VERSION_STR=${VERSION_STR/:/-}
                 cp "$PKG" "${PKG/$VERSION_STR/$OTHER_VERSION_STR}"
                 jfrog bt upload --publish --override --deb "${OTHER_CODENAME}/main/amd64" ./*${OTHER_CODENAME}.deb "$VERSION_PATH"
             fi
