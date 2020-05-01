@@ -24,6 +24,7 @@ makeArch () {
     PACKAGER="OpenBangla <openbanglateam@gmail.com>"
     GPGKEY=${BINTRAY_GPG_ID}
     PKGEXT=".pkg.tar.zst"
+    echo 'PKGEXT=".pkg.tar.zst"' >> /etc/makepkg.conf
     RELEASE_FILENAME="${RELEASE_STUB}${DIST}${PKGEXT}"
     pacman -S --noconfirm --needed base-devel cmake libibus qt5-base rust curl
     mkdir /build
