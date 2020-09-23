@@ -22,9 +22,11 @@
 #include <QMouseEvent>
 #include <QFileDialog>
 #include <QMenu>
+#include <QDir>
 #include "TopBar.h"
 #include "Layout.h"
 #include "Settings.h"
+#include "FileSystem.h"
 #include "LayoutViewer.h"
 #include "AboutDialog.h"
 #include "SettingsDialog.h"
@@ -54,6 +56,7 @@ TopBar::TopBar(QWidget *parent) :
   SetupTopBar();
   SetupPopupMenus();
   SetupTrayIcon();
+  DataMigration();
 
   if (gSettings->getUpdateCheck()) {
     checkForUpdate();
@@ -107,6 +110,10 @@ void TopBar::SetupPopupMenus() {
   // Layout Popup Menu
   layoutMenu = new QMenu("Select keyboard layout", this);
   layoutMenu->setIcon(QIcon(":/images/keyboard_layout.png"));
+  connect(layoutMenu, &QMenu::aboutToHide, [=]() {
+    ui->buttonSetLayout->setChecked(false);
+  });
+
   layoutMenuInstall = new QAction("Install a layout", this);
   layoutMenuLayoutsGroup = new QActionGroup(this);
   for (auto &layoutMenuLayout : layoutMenuLayouts) {
@@ -119,44 +126,28 @@ void TopBar::SetupPopupMenus() {
   RefreshLayouts();
   connect(layoutMenuInstall, SIGNAL(triggered()), this, SLOT(layoutMenuInstall_clicked()));
 
-  /* Settings Popup Menu
+  // Icon Button Popup Menu
+#if 0
+  iconMenuOnTray = new QAction("Jump to system tray", this);
+  connect(iconMenuOnTray, SIGNAL(triggered()), this, SLOT(iconMenuOnTray_clicked()));
+#endif
 
-  settingsMenuShowDialog = new QAction("Settings", this);
-  connect(settingsMenuShowDialog, SIGNAL(triggered()), this, SLOT(settingsMenuShowDialog_clicked()));
+  iconMenuLayout = new QAction("About current keyboard layout", this);
+  connect(iconMenuLayout, SIGNAL(triggered()), this, SLOT(iconMenuLayout_clicked()));
 
-  settingsMenu = new QMenu(this);
-  settingsMenu->addAction(settingsMenuShowDialog);
-  */
+  iconMenuAbout = new QAction("About OpenBangla Keyboard", this);
+  connect(iconMenuAbout, SIGNAL(triggered()), this, SLOT(iconMenuAbout_clicked()));
 
-  // About Popup Menu
-  aboutMenuLayout = new QAction("About current keyboard layout", this);
-  connect(aboutMenuLayout, SIGNAL(triggered()), this, SLOT(aboutMenuLayout_clicked()));
-
-  aboutMenuAbout = new QAction("About OpenBangla Keyboard", this);
-  connect(aboutMenuAbout, SIGNAL(triggered()), this, SLOT(aboutMenuAbout_clicked()));
-
-  aboutMenuUpdate = new QAction("Check for Updates", this);
-  connect(aboutMenuUpdate, &QAction::triggered, [=]() {
+  iconMenuUpdate = new QAction("Check for Updates", this);
+  connect(iconMenuUpdate, &QAction::triggered, [=]() {
     checkForUpdate();
   });
 
-  aboutMenu = new QMenu(this);
-  aboutMenu->addAction(aboutMenuLayout);
-  aboutMenu->addAction(aboutMenuAbout);
-  aboutMenu->addAction(aboutMenuUpdate);
-
-  // Quit Popup Menu
-  quitMenuQuit = new QAction("Quit", this);
-  connect(quitMenuQuit, SIGNAL(triggered()), this, SLOT(quitMenuQuit_clicked()));
-
-#if 0
-  quitMenuOnTray = new QAction("Jump to system tray", this);
-  connect(quitMenuOnTray, SIGNAL(triggered()), this, SLOT(quitMenuOnTray_clicked()));
-#endif
-
-  quitMenu = new QMenu(this);
-  //quitMenu->addAction(quitMenuOnTray);
-  quitMenu->addAction(quitMenuQuit);
+  iconMenu = new QMenu(this);
+  //iconMenu->addAction(iconMenuOnTray);
+  iconMenu->addAction(iconMenuLayout);
+  iconMenu->addAction(iconMenuAbout);
+  iconMenu->addAction(iconMenuUpdate);  
 }
 
 void TopBar::SetupTrayIcon() {
@@ -174,9 +165,9 @@ void TopBar::SetupTrayIcon() {
   trayMenu->addMenu(layoutMenu); // Layout Menu
   /*
   trayMenu->addSeparator();
-  trayMenu->addAction(aboutMenuAbout);*/
+  trayMenu->addAction(iconMenuAbout);*/
   trayMenu->addSeparator();
-  trayMenu->addAction(quitMenuQuit);
+  trayMenu->addAction(iconMenuQuit);
 
   tray->setContextMenu(trayMenu);
 #endif
@@ -237,7 +228,7 @@ void TopBar::layoutMenuInstall_clicked() {
                                                   "Avro Keyboard 5 Keyboard Layout (*.avrolayout)");
   LayoutConverter conv;
   if (fileName.contains(".avrolayout") && fileName != "") {
-    ConversionResult res = conv.convertLayout(fileName);
+    ConversionResult res = conv.convertAvroLayout(fileName);
     switch (res) {
     case Ok:
       QMessageBox::information(Q_NULLPTR, "OpenBangla Keyboard", "Layout Installed Successfully",
@@ -251,10 +242,10 @@ void TopBar::layoutMenuInstall_clicked() {
       break;
     case OpenError:
       QMessageBox::critical(Q_NULLPTR, "OpenBangla Keyboard",
-                            "An error occured when opening the layout file!", QMessageBox::Ok);
+                            "An error occurred while opening the layout file!", QMessageBox::Ok);
       break;
     case SaveError:
-      QMessageBox::critical(Q_NULLPTR, "OpenBangla Keyboard", "Error occured when saving the file!",
+      QMessageBox::critical(Q_NULLPTR, "OpenBangla Keyboard", "Error occurred while saving the file!",
                             QMessageBox::Ok);
       break;
     }
@@ -262,28 +253,18 @@ void TopBar::layoutMenuInstall_clicked() {
   RefreshLayouts();
 }
 
-/*
-void TopBar::settingsMenuShowDialog_clicked() {
-  settingsDialog->updateSettings();
-  settingsDialog->show();
-}*/
-
-void TopBar::aboutMenuLayout_clicked() {
+void TopBar::iconMenuLayout_clicked() {
   layoutViewer->showLayoutInfoDialog();
 }
 
-void TopBar::aboutMenuAbout_clicked() {
+void TopBar::iconMenuAbout_clicked() {
   aboutDialog->show();
 }
 
-void TopBar::quitMenuOnTray_clicked() {
+void TopBar::iconMenuOnTray_clicked() {
   this->setVisible(false);
   tray->setVisible(true);
   tray->showMessage("OpenBangla Keyboard", "OpenBangla Keyboard is now running on system tray");
-}
-
-void TopBar::quitMenuQuit_clicked() {
-  TopBar::close();
 }
 
 void TopBar::trayMenuRestore_clicked() {
@@ -291,12 +272,15 @@ void TopBar::trayMenuRestore_clicked() {
   this->setVisible(true);
 }
 
-void TopBar::on_buttonAbout_clicked() {
-  QPoint point;
-  point = this->pos();
-  point.setX(point.x() + ui->buttonAbout->geometry().x());
-  point.setY(point.y() + this->height());
-  aboutMenu->exec(point);
+void TopBar::on_buttonIcon_clicked() {
+  // Check if this is not a position change event. If it is, then ignore it.
+  if(!positionChanged) {
+    QPoint point;
+    point = this->pos();
+    point.setX(point.x() + ui->buttonIcon->geometry().x());
+    point.setY(point.y() + this->height());
+    iconMenu->exec(point);
+  }
 }
 
 void TopBar::closeEvent(QCloseEvent *event) {
@@ -308,6 +292,7 @@ bool TopBar::eventFilter(QObject *object, QEvent *event) {
   if (object == ui->buttonIcon) {
     if (event->type() == QEvent::MouseButtonPress) {
       canMoveTopbar = true;
+      positionChanged = false; // reset
       QMouseEvent *e = (QMouseEvent *) event;
       pressedMouseX = e->x();
       pressedMouseY = e->y();
@@ -317,13 +302,12 @@ bool TopBar::eventFilter(QObject *object, QEvent *event) {
         QMouseEvent *e = (QMouseEvent *) event;
         ui->buttonIcon->setCursor(Qt::ClosedHandCursor);
         move(e->globalX() - pressedMouseX, e->globalY() - pressedMouseY);
+        positionChanged = true;
       }
     } else if (event->type() == QEvent::MouseButtonRelease) {
       canMoveTopbar = false;
-      ui->buttonIcon->setCursor(Qt::OpenHandCursor);
+      ui->buttonIcon->setCursor(Qt::ArrowCursor);
       event->accept();
-    } else if (event->type() == QEvent::Enter) {
-      ui->buttonIcon->setCursor(Qt::OpenHandCursor);
     }
   }
 
@@ -339,11 +323,7 @@ void TopBar::on_buttonSetLayout_clicked() {
 }
 
 void TopBar::on_buttonShutdown_clicked() {
-  QPoint point;
-  point = this->pos();
-  point.setX(point.x() + ui->buttonShutdown->geometry().x());
-  point.setY(point.y() + this->height());
-  quitMenu->exec(point);
+  QApplication::exit();
 }
 
 void TopBar::on_buttonViewLayout_clicked() {
@@ -354,4 +334,43 @@ void TopBar::on_buttonViewLayout_clicked() {
 void TopBar::on_buttonSettings_clicked() {
   settingsDialog->updateSettings();
   settingsDialog->show();
+}
+
+/**
+ * OBK from version 2 onwards reads and stores user data in a different directory
+ * the following XDG specification.
+ * This function checks and migrates data files into the new user data directory.
+ **/
+void TopBar::DataMigration() {
+  UserFolders usr;
+  LayoutConverter converter;
+  if(gSettings->getPreviousUserDataRemains()) {
+    QDir previousUserDataPath = QDir(environmentVariable("HOME", "") + "/.OpenBangla-Keyboard");
+    if(previousUserDataPath.exists()) {
+      // Handle the data files.
+      migrateFile("phonetic-candidate-selection.json", previousUserDataPath, usr.dataPath());
+      migrateFile("autocorrect.json", previousUserDataPath, usr.dataPath());
+      // Convert old layout files if present.
+      previousUserDataPath.cd("Layouts");
+      QStringList list = previousUserDataPath.entryList(QStringList("*.json"));
+      if(!list.empty()) {
+        for(auto& file : list) {
+          QString path = previousUserDataPath.path() + "/" + file;
+
+          if(converter.convertLayoutFormat(path) != Ok) {
+            QMessageBox::critical(Q_NULLPTR, "OpenBangla Keyboard",
+                            QString("An error occurred while converting %1 layout!").arg(file), QMessageBox::Ok);
+            return;
+          }
+        }
+      }
+      QMessageBox::information(Q_NULLPTR, "OpenBangla Keyboard", "User data files has been migrated successfully.",
+                               QMessageBox::Ok);
+      // Delete the previous user directory.
+      previousUserDataPath.cdUp();
+      previousUserDataPath.removeRecursively();
+      gSettings->setPreviousUserDataRemains(false);
+      RefreshLayouts();
+    }
+  }
 }

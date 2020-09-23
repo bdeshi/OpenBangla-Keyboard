@@ -77,7 +77,7 @@ Make sure you have a **working internet connection**.
 
 Open your terminal and run this command on your shell:
 ```bash
-bash -c "$(wget -nv -O- https://bit.ly/OBK-sh)"
+bash -c "$(wget -nv -O- https://git.io/JUGB8)"
 ```
 
 Then use iBus UI or run `ibus-setup` to add and activate **OpenBangla Keyboard** as input method.
@@ -99,20 +99,21 @@ OpenBangla Keyboard currently has the following build dependencies:
 * CMake
 * Qt 5.5 or later
 * iBus development library
+* Zstandard compression library (zstd)
 
 On a Ubuntu/Debian system you can easily install them like this:
 ```bash
-sudo apt-get install build-essential rustc cargo cmake libibus-1.0-dev qt5-default
+sudo apt-get install build-essential rustc cargo cmake libibus-1.0-dev qt5-default libzstd-dev
 ```
 
 On a Fedora system you can easily install them like this:
 ```bash
-sudo dnf install @buildsys-build rust cargo cmake qt5-qtdeclarative-devel ibus-devel
+sudo dnf install @buildsys-build rust cargo cmake qt5-qtdeclarative-devel ibus-devel libzstd-devel
 ```
 
 On a Arch Linux / Arch Based system you can easily install them like this:
 ```bash
-sudo pacman -S base-devel rust cmake qt5-base libibus
+sudo pacman -S base-devel rust cmake qt5-base libibus zstd
 ```
 
 After you have installed required libraries and binaries, clone this repository and change to the cloned folder:
@@ -134,6 +135,8 @@ sudo make install
  * Mehdi Hasan Khan, for originally developing and maintaining Avro Keyboard.
  * Rifat Nabi, for porting Avro Phonetic to Javascript.
  * https://github.com/sarim[Sarim Khan], for writing ibus-avro.
+ * https://github.com/saaiful[Saiful Islam], for the icon.
+ * https://material.io/resources/icons[Material Design Icons].
  * https://github.com/alex-spataru/QSimpleUpdater[QSimpleUpdater], for providing update mechanism.
 
 

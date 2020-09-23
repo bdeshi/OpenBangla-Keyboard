@@ -42,9 +42,10 @@ public:
 
   void showLayoutInfoDialog();
 
-private slots:
+protected:
+  void closeEvent(QCloseEvent *event) override;
 
-  void on_buttonClose_clicked();
+private slots:
 
   void on_buttonAboutLayout_clicked();
 
@@ -58,6 +59,9 @@ private:
   AboutFile *aboutDialog;
   QImage image;
   LayoutDesc desc;
+  QByteArray image0, image1;
+
+  QByteArray decodeAndDecompress(QByteArray &data);
 };
 
 #endif // LAYOUTVIEWER_H

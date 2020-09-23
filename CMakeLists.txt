@@ -6,7 +6,7 @@ project("OpenBangla-Keyboard" VERSION ${VERSION_STRING})
 set(APP_NAME "OpenBangla-Keyboard")
 
 ## Set versions
-add_definitions(-DPROJECT_VERSION="${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}")
+add_definitions(-DPROJECT_VERSION="${PROJECT_VERSION}")
 
 ## Set Compiler Standard
 set(CMAKE_CXX_STANDARD 11)
@@ -54,9 +54,11 @@ if (OS_LINUX)
     add_definitions(-DPROJECT_DATADIR="${PROJECT_DATADIR}")
 
     include(FindPkgConfig)
-    ## Find iBus ##
     find_package(PkgConfig)
+    ## Find iBus ##
     pkg_check_modules(IBUS REQUIRED ibus-1.0)
+    ## Find zstd ##
+    pkg_check_modules(ZSTD REQUIRED libzstd)
 endif (OS_LINUX)
 
 add_subdirectory(src/engine)
@@ -76,8 +78,8 @@ endif ()
 
 
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "OpenSource Bengali input method")
-set(CPACK_PACKAGE_VENDOR "Muhammad Mominul Huque")
-set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Muhammad Mominul Huque <mominul2082@gmail.com>")
+set(CPACK_PACKAGE_VENDOR "OpenBangla Team")
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "OpenBangla Team <openbanglateam@gmail.com>")
 set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_SOURCE_DIR}/data/Readme.txt")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
 set(CPACK_PACKAGE_VERSION_MAJOR "${PROJECT_VERSION_MAJOR}")
@@ -85,13 +87,13 @@ set(CPACK_PACKAGE_VERSION_MINOR "${PROJECT_VERSION_MINOR}")
 set(CPACK_PACKAGE_VERSION_PATCH "${PROJECT_VERSION_PATCH}")
 set(CPACK_PACKAGE_FILE_NAME "${PROJECT_NAME}_${PROJECT_VERSION}-$ENV{DIST}")
 set(CPACK_STRIP_FILES TRUE)
-set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "http://openbangla.github.io/")
+set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://openbangla.github.io/")
 set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
 set(CPACK_DEBIAN_PACKAGE_DEPENDS "ibus (>= 1.5.1)")
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 set(CPACK_RPM_PACKAGE_LICENSE "GPLv3")
-set(CPACK_RPM_PACKAGE_URL "http://openbangla.github.io/")
-set(CPACK_RPM_PACKAGE_REQUIRES "qt5-qtbase >= 5.9.0, ibus >= 1.5.1, ibus-libs >= 1.5.1")
+set(CPACK_RPM_PACKAGE_URL "https://openbangla.github.io/")
+set(CPACK_RPM_PACKAGE_REQUIRES "qt5-qtbase >= 5.9.0, ibus >= 1.5.1, ibus-libs >= 1.5.1, libzstd >= 1.3.3")
 set(CPACK_RPM_PACKAGE_RELEASE_DIST ON)
 # Prevents CPack from generating file conflicts
 set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION "/usr/share/applications")

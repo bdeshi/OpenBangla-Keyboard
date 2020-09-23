@@ -40,6 +40,10 @@ public:
     dir.mkpath(path + "/layouts/");
   }
 
+  QString dataPath() {
+    return path;
+  }
+
   QString getCandidateSaveFile() {
     return path + "/phonetic-candidate-selection.json";
   }
@@ -66,5 +70,7 @@ QString SuffixDictPath();
 QString RegexDictPath();
 
 QString AutoCorrectFilePath();
+
+bool migrateFile(const QString &fileName, const QDir &src, const QDir &dst);
 
 #endif /* end of include guard: FILE_SYSTEM_H */

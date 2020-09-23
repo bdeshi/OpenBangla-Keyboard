@@ -11,17 +11,16 @@ static IBusBus *bus = nullptr;
 static IBusEngine *engine = nullptr;
 static IBusLookupTable *table = nullptr;
 static gint id = 0;
-static bool input_session_ongoing = false;
 static Suggestion *suggestion = nullptr;
+/* Unfortunately, we have to keep track of the right Alt Key. */
+static bool altGr = false;
 
 void update_with_settings() {
     qputenv("RITI_LAYOUT_FILE", gSettings->getLayoutPath().toLatin1());
-    qputenv("RITI_ENTER_CLOSES_PREVIEW_WIN", gSettings->getEnterKeyClosesPrevWin() ? "true" : "false");
-    qputenv("RITI_PREVIEW_WIN_HORIZONTAL", gSettings->getCandidateWinHorizontal() ? "true" : "false");
     qputenv("RITI_PHONETIC_DATABASE_ON", gSettings->getShowCWPhonetic() ? "true" : "false");
     qputenv("RITI_PHONETIC_INCLUDE_ENGLISH", gSettings->getIncludeEnglishPrevWin() ? "true" : "false");
     qputenv("RITI_DATABASE_DIR", DatabasePath().toLatin1());
-    qputenv("RITI_LAYOUT_FIXED_DATABASE_ON", "true");
+    qputenv("RITI_LAYOUT_FIXED_DATABASE_ON", gSettings->getShowPrevWinFixed() ? "true" : "false");
     qputenv("RITI_LAYOUT_FIXED_VOWEL", gSettings->getAutoVowelFormFixed() ? "true" : "false");
     qputenv("RITI_LAYOUT_FIXED_CHANDRA", gSettings->getAutoChandraPosFixed() ? "true" : "false");
     qputenv("RITI_LAYOUT_FIXED_KAR", gSettings->getTraditionalKarFixed() ? "true" : "false");
@@ -68,12 +67,10 @@ void engine_update_lookup_table() {
     ibus_lookup_table_set_cursor_pos(table, prev_selection);
   }
 
-  input_session_ongoing = true;
   engine_update_preedit();
 }
 
 void engine_reset() {
-  input_session_ongoing = false;
   ibus_lookup_table_clear(table);
   ibus_engine_hide_preedit_text(engine);
   ibus_engine_hide_auxiliary_text(engine);
@@ -110,79 +107,159 @@ gboolean engine_process_key_event_cb(IBusEngine *engine,
                                    guint state) {
   u_int8_t modifier = 0;
   bool ctrl_key = false;
+  bool alt_key = false;
 
   // Don't accept Key Release event
-  if (state & IBUS_RELEASE_MASK)
+  if (state & IBUS_RELEASE_MASK) {
+    if(keyval == IBUS_KEY_Alt_R || keyval == IBUS_KEY_ISO_Level3_Shift) {
+      altGr = false;
+    }
     return FALSE;
-
-  // Set modifiers
-  if (state & IBUS_SHIFT_MASK)
-    modifier |= MODIFIER_SHIFT;
-  if (state & IBUS_CONTROL_MASK) {
-    modifier |= MODIFIER_CTRL;
-    ctrl_key = true;
   }
-  if (state & IBUS_MOD1_MASK)
-    modifier |= MODIFIER_ALT;
 
-  int key = ibus_keycode(keyval);
-
-  if(!input_session_ongoing) {
+  if(!riti_context_ongoing_input_session(ctx)) {
     update_with_settings();
     riti_context_update_engine(ctx);
   }
 
-  suggestion = riti_get_suggestion_for_key(ctx, key, modifier);
+  // At first, handle the special keys.
+  switch (keyval) {
+    case IBUS_KEY_BackSpace:
+      if(riti_context_ongoing_input_session(ctx)) {
+        suggestion = riti_context_backspace_event(ctx);
 
-  bool ret = riti_context_key_handled(ctx);
-  LOG_DEBUG("[IM:iBus]: Layout Management %s the event\n", ret ? "accepted" : "rejected");
-
-  if(ret) {
-      switch (key) {
-        // We have to care specially when the key is Backspace! :)
-        case VC_BACKSPACE:
-          if(!riti_suggestion_is_empty(suggestion)) {
-            engine_update_lookup_table();
-          } else {
-            engine_reset();
-          } 
-          break;
-        // When 'Enter key closes preview window' is true.
-        case VC_ENTER:
-          engine_commit();
-          break;
-        case VC_RIGHT:
-          ibus_lookup_table_cursor_down(table);
-          engine_update_preedit();
-          break;
-        case VC_DOWN:
-          ibus_lookup_table_cursor_down(table);
-          engine_update_preedit();
-          break;
-        case VC_LEFT:
-          ibus_lookup_table_cursor_up(table);
-          engine_update_preedit();
-          break;
-        case VC_UP:
-          ibus_lookup_table_cursor_up(table);
-          engine_update_preedit();
-          break;
-        case VC_TAB:
-          ibus_lookup_table_cursor_down(table);
-          engine_update_preedit();
-          break;
-        default:
+        if(!riti_suggestion_is_empty(suggestion)) {
           engine_update_lookup_table();
+        } else {
+          engine_reset();
+        }
+
+        return TRUE;
+      } else {
+        return FALSE;
       }
-  } else {
-    if(input_session_ongoing) {
-      engine_commit();
-    } else {
-      engine_reset();
-    }
+    case IBUS_KEY_Return:
+      if(riti_context_ongoing_input_session(ctx)) {
+        engine_commit();
+        return (gboolean) gSettings->getEnterKeyClosesPrevWin();
+      } else {
+        return FALSE;
+      }
+    case IBUS_KEY_space:
+    case IBUS_KEY_KP_Enter:
+      if(riti_context_ongoing_input_session(ctx)) {
+        engine_commit();
+      }
+      return FALSE;
+    /** Arrow and Tab keys.
+     * We use the arrow keys and the tab key to move the selection
+     * in the preview window. So we have to ensure the preview 
+     * window is shown by checking if the current suggestion is
+     * not a lonely one. Otherwise we don't handle it.
+     **/
+    case IBUS_KEY_Right:
+    case IBUS_KEY_Left:
+      if(riti_context_ongoing_input_session(ctx)) {
+        if(gSettings->getCandidateWinHorizontal() && !riti_suggestion_is_lonely(suggestion)) {
+          if(keyval == IBUS_KEY_Right) {
+            ibus_lookup_table_cursor_down(table);
+          } else {
+            ibus_lookup_table_cursor_up(table);
+          }
+          engine_update_preedit();
+          return TRUE;
+        } else {
+          engine_commit();
+          return FALSE;
+        }
+      } else {
+        return FALSE;
+      }
+    case IBUS_KEY_Up:
+    case IBUS_KEY_Down:
+      if(riti_context_ongoing_input_session(ctx)) {
+        if(!gSettings->getCandidateWinHorizontal() && !riti_suggestion_is_lonely(suggestion)) {
+          if(keyval == IBUS_KEY_Up) {
+            ibus_lookup_table_cursor_up(table);
+          } else {
+            ibus_lookup_table_cursor_down(table);
+          }
+          engine_update_preedit();
+          return TRUE;
+        } else {
+          engine_commit();
+          return FALSE;
+        }
+      } else {
+        return FALSE;
+      }
+    case IBUS_KEY_Tab:
+      if(riti_context_ongoing_input_session(ctx)) {
+        if(!riti_suggestion_is_lonely(suggestion)) {
+          ibus_lookup_table_cursor_down(table);
+          engine_update_preedit();
+          return TRUE;
+        } else {
+          engine_commit();
+          return FALSE;
+        }
+      } else {
+        return FALSE;
+      }
+    /** Modifier keys **/
+    case IBUS_KEY_Alt_R:
+    case IBUS_KEY_ISO_Level3_Shift:
+    altGr = true; // Keep track of the right Alt key (also known as the AltGr key)
+    case IBUS_KEY_Shift_L:
+    case IBUS_KEY_Shift_R:
+    case IBUS_KEY_Control_L:
+    case IBUS_KEY_Control_R:
+    case IBUS_KEY_Alt_L:
+    case IBUS_KEY_Meta_L:
+    case IBUS_KEY_Meta_R:
+      return (gboolean) riti_context_ongoing_input_session(ctx);
+    default:
+      break;
   }
 
-  return (gboolean) ret;
+  // Set modifiers
+  if (state & IBUS_SHIFT_MASK) {
+    modifier |= MODIFIER_SHIFT;
+  }
+
+  if (state & IBUS_CONTROL_MASK) {
+    ctrl_key = true;
+  }
+
+  if (state & IBUS_MOD1_MASK) {
+    alt_key = true;
+  }
+
+  // Convert the key value into riti's key value.
+  uint16_t key = ibus_keycode(keyval);
+
+  // Reject the key which has only Ctrl or Alt (not the right one) combination and riti doesn't handle.
+  if((ctrl_key && !alt_key) || (!ctrl_key && alt_key && !altGr) || key == VC_UNKNOWN) {
+    if(riti_context_ongoing_input_session(ctx)) {
+      engine_commit();
+    }
+    return FALSE;
+  }
+
+  // If we have Ctrl and Alt combination or the right Alt, set it as the AltGr modifier.
+  if((ctrl_key && alt_key) || altGr) {
+    modifier |= MODIFIER_ALT_GR;
+  }
+
+  suggestion = riti_get_suggestion_for_key(ctx, key, modifier);
+
+  if(!riti_suggestion_is_empty(suggestion)) {
+    engine_update_lookup_table();
+  } else {
+    return FALSE;
+  }
+
+  return TRUE;
 }
 
 void engine_enable_cb(IBusEngine *engine) {
@@ -197,17 +274,15 @@ void engine_disable_cb(IBusEngine *engine) {
 void engine_focus_out_cb(IBusEngine *engine) {
   LOG_DEBUG("[IM:iBus]: IM Focus out\n");
 
-  if(input_session_ongoing) {
-    engine_commit();
+  if(riti_context_ongoing_input_session(ctx)) {
+    riti_context_finish_input_session(ctx);
+    engine_reset();
   }
 }
 
 void engine_candidate_clicked_cb(IBusEngine *engine, guint index, guint button, guint state) {
   IBusText *text = ibus_lookup_table_get_candidate(table, index);
   engine_commit_text(text);
-  /// Hack: We do this for notifing that user has choosen a different suggestion to be committed.
-  /// We also free it immediately :)
-  riti_suggestion_free(riti_get_suggestion_for_key(ctx, VC_TAB, 0));
   riti_context_candidate_committed(ctx, index);
 }
 

@@ -1,6 +1,6 @@
 /*
  *  OpenBangla Keyboard
- *  Copyright (C) 2015-2016 Muhammad Mominul Huque <mominul2082@gmail.com>
+ *  Copyright (C) 2015-2020 Muhammad Mominul Huque <mominul2082@gmail.com>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,15 +20,15 @@
 #define KEYCODE_H
 
 #include <map>
+#include <stdexcept>
 #include <ibus.h>
 #include "riti.h"
 #include "Log.h"
 
-/* Here we map iBus keycodes with ours.
- * We use iBus's US layout(https://github.com/ibus/ibus/blob/master/data/keymaps/us)
- */
+/* Here we map iBus keycodes with riti's. */
 
-std::map<guint, int> key;
+std::map<guint, uint16_t> key;
+static const uint16_t VC_UNKNOWN = 0x0046;
 
 void initKeycode() {
   // Begin Alphanumeric Zone
@@ -64,36 +64,32 @@ void initKeycode() {
   key[IBUS_KEY_equal] = VC_EQUALS;
   key[IBUS_KEY_plus] = VC_PLUS;
 
-  key[IBUS_KEY_BackSpace] = VC_BACKSPACE;
-
-  key[IBUS_KEY_Tab] = VC_TAB;
-
-  key[IBUS_KEY_A] = VC_A;
-  key[IBUS_KEY_B] = VC_B;
-  key[IBUS_KEY_C] = VC_C;
-  key[IBUS_KEY_D] = VC_D;
-  key[IBUS_KEY_E] = VC_E;
-  key[IBUS_KEY_F] = VC_F;
-  key[IBUS_KEY_G] = VC_G;
-  key[IBUS_KEY_H] = VC_H;
-  key[IBUS_KEY_I] = VC_I;
-  key[IBUS_KEY_J] = VC_J;
-  key[IBUS_KEY_K] = VC_K;
-  key[IBUS_KEY_L] = VC_L;
-  key[IBUS_KEY_M] = VC_M;
-  key[IBUS_KEY_N] = VC_N;
-  key[IBUS_KEY_O] = VC_O;
-  key[IBUS_KEY_P] = VC_P;
-  key[IBUS_KEY_Q] = VC_Q;
-  key[IBUS_KEY_R] = VC_R;
-  key[IBUS_KEY_S] = VC_S;
-  key[IBUS_KEY_T] = VC_T;
-  key[IBUS_KEY_U] = VC_U;
-  key[IBUS_KEY_V] = VC_V;
-  key[IBUS_KEY_W] = VC_W;
-  key[IBUS_KEY_X] = VC_X;
-  key[IBUS_KEY_Y] = VC_Y;
-  key[IBUS_KEY_Z] = VC_Z;
+  key[IBUS_KEY_A] = VC_A_SHIFT;
+  key[IBUS_KEY_B] = VC_B_SHIFT;
+  key[IBUS_KEY_C] = VC_C_SHIFT;
+  key[IBUS_KEY_D] = VC_D_SHIFT;
+  key[IBUS_KEY_E] = VC_E_SHIFT;
+  key[IBUS_KEY_F] = VC_F_SHIFT;
+  key[IBUS_KEY_G] = VC_G_SHIFT;
+  key[IBUS_KEY_H] = VC_H_SHIFT;
+  key[IBUS_KEY_I] = VC_I_SHIFT;
+  key[IBUS_KEY_J] = VC_J_SHIFT;
+  key[IBUS_KEY_K] = VC_K_SHIFT;
+  key[IBUS_KEY_L] = VC_L_SHIFT;
+  key[IBUS_KEY_M] = VC_M_SHIFT;
+  key[IBUS_KEY_N] = VC_N_SHIFT;
+  key[IBUS_KEY_O] = VC_O_SHIFT;
+  key[IBUS_KEY_P] = VC_P_SHIFT;
+  key[IBUS_KEY_Q] = VC_Q_SHIFT;
+  key[IBUS_KEY_R] = VC_R_SHIFT;
+  key[IBUS_KEY_S] = VC_S_SHIFT;
+  key[IBUS_KEY_T] = VC_T_SHIFT;
+  key[IBUS_KEY_U] = VC_U_SHIFT;
+  key[IBUS_KEY_V] = VC_V_SHIFT;
+  key[IBUS_KEY_W] = VC_W_SHIFT;
+  key[IBUS_KEY_X] = VC_X_SHIFT;
+  key[IBUS_KEY_Y] = VC_Y_SHIFT;
+  key[IBUS_KEY_Z] = VC_Z_SHIFT;
 
   key[IBUS_KEY_a] = VC_A;
   key[IBUS_KEY_b] = VC_B;
@@ -146,17 +142,6 @@ void initKeycode() {
   key[IBUS_KEY_apostrophe] = VC_APOSTROPHE;
   key[IBUS_KEY_quotedbl] = VC_QUOTE;
 
-  key[IBUS_KEY_Return] = VC_ENTER;
-  key[IBUS_KEY_space] = VC_SPACE;
-  // End Alphanumeric Zone
-
-  // Begin Cursor Key Zone
-  key[IBUS_KEY_Left] = VC_LEFT;
-  key[IBUS_KEY_Up] = VC_UP;
-  key[IBUS_KEY_Right] = VC_RIGHT;
-  key[IBUS_KEY_Down] = VC_DOWN;
-  // End Cursor Key Zone
-
   // Begin Numeric Zone
   key[IBUS_KEY_KP_Divide] = VC_KP_DIVIDE;
   key[IBUS_KEY_KP_Multiply] = VC_KP_MULTIPLY;
@@ -177,22 +162,15 @@ void initKeycode() {
   key[IBUS_KEY_KP_9] = VC_KP_9;
   key[IBUS_KEY_KP_0] = VC_KP_0;
   // End Numeric Zone
-
-  key[IBUS_KEY_Shift_L] = VC_SHIFT;
-  key[IBUS_KEY_Shift_R] = VC_SHIFT;
-  key[IBUS_KEY_Control_L] = VC_CONTROL;
-  key[IBUS_KEY_Control_R] = VC_CONTROL;
-  key[IBUS_KEY_Alt_L] = VC_ALT;
-  key[IBUS_KEY_Alt_R] = VC_ALT;
 }
 
-int ibus_keycode(guint k) {
+uint16_t ibus_keycode(guint k) {
   try {
     return key.at(k);
   }
   catch (std::out_of_range) {
     // The key is not mapped - means that we don't needed the UNKNOWN key!
-    LOG_DEBUG("[IM:iBus]: Got unknown keycode. Mapping to VC_UNKNOWN\n");
+    LOG_DEBUG("[IM:iBus]: Got unknown keycode %d. Mapping to VC_UNKNOWN\n", k);
     return VC_UNKNOWN;
   }
 }

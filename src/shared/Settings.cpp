@@ -82,6 +82,16 @@ bool Settings::getEnterKeyClosesPrevWin() {
   return setting->value("settings/EnterKeyClosesPrevWin", false).toBool();
 }
 
+void Settings::setShowPrevWinFixed(bool b) {
+  setting->setValue("settings/FixedLayout/ShowPrevWin", b);
+  setting->sync();
+}
+
+bool Settings::getShowPrevWinFixed() {
+  setting->sync();
+  return setting->value("settings/FixedLayout/ShowPrevWin", true).toBool();
+}
+
 void Settings::setAutoVowelFormFixed(bool b) {
   setting->setValue("settings/FixedLayout/AutoVowelForm", b);
   setting->sync();
@@ -170,4 +180,14 @@ void Settings::setIncludeEnglishPrevWin(bool b) {
 bool Settings::getIncludeEnglishPrevWin() {
   setting->sync();
   return setting->value("settings/PreviewWin/IncludeEnglishPhonetic", true).toBool();
+}
+
+void Settings::setPreviousUserDataRemains(bool b) {
+  setting->setValue("settings/PreviousUserDataRemains", b);
+  setting->sync();
+}
+
+bool Settings::getPreviousUserDataRemains() {
+  setting->sync();
+  return setting->value("settings/PreviousUserDataRemains", true).toBool();
 }
